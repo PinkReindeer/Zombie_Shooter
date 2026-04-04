@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ECS/World.h"
+#include "World.h"
 
 class Game
 {

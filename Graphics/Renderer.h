@@ -2,7 +2,7 @@
 
 #include <map>
 
-#include "ECS/ComponentTypes.h"
+#include "GameData.h"
 
 class Renderer
 {

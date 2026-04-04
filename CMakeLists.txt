@@ -45,23 +45,9 @@ add_executable(${PROJECT_NAME}
     Application.h
     Graphics/Renderer.h
     Graphics/Renderer.cpp
-    ECS/ComponentTypes.h
-    ECS/EntityManager.h
-    ECS/EntityManager.cpp
-    ECS/World.h
-    ECS/World.cpp
-    Systems/PlayerSystem.h
-    Systems/PlayerSystem.cpp
-    Systems/ZombieSystem.h
-    Systems/ZombieSystem.cpp
-    Systems/BulletSystem.h
-    Systems/BulletSystem.cpp
-    Systems/CollisionSystem.h
-    Systems/CollisionSystem.cpp
-    Systems/RenderSystem.h
-    Systems/RenderSystem.cpp
-    Systems/ParticleSystem.h
-    Systems/ParticleSystem.cpp
+    GameData.h
+    World.h
+    World.cpp
     Game.h
     Game.cpp
     Random.h
