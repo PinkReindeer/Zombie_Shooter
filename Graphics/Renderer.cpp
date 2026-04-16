@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Tilemap.h"
 
 static constexpr const char* FontPath = "Assets/Fonts/pixel-game.regular.otf";
 static constexpr const char* FontBoldPath = "Assets/Fonts/pixel-game.extrude.otf";
@@ -12,6 +13,7 @@ Renderer::~Renderer()
     UnloadTexture(m_PlayerTexture);
     UnloadTexture(m_ZombieTexture);
     UnloadTexture(m_MutationZombieTexture);
+    m_Tilemap.Unload();
 }
 
 void Renderer::Init()
@@ -19,12 +21,18 @@ void Renderer::Init()
     m_PlayerTexture = LoadTexture("Assets/Sprites/survivor_rifle.png");
     m_ZombieTexture = LoadTexture("Assets/Sprites/zombie.png");
     m_MutationZombieTexture = LoadTexture("Assets/Sprites/mutation_zombie.png");
+    m_Tilemap.Load("Assets/map.csv", "Assets/ashlands_tileset.png");
 }
 
 void Renderer::SetViewOffset(int x, int y)
 {
     m_ViewOffsetX = x;
     m_ViewOffsetY = y;
+}
+
+void Renderer::RenderTilemap() const
+{
+    m_Tilemap.Render(m_ViewOffsetX, m_ViewOffsetY, 2.5f);
 }
 
 void Renderer::RenderMob(int xp, int yp, float rotation, float multiplySize, EntityType type, bool shouldDraw, bool isMutation)

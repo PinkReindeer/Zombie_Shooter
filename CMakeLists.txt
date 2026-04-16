@@ -43,15 +43,17 @@ add_executable(${PROJECT_NAME}
     main.cpp
     Application.cpp
     Application.h
-    Graphics/Renderer.h
-    Graphics/Renderer.cpp
     GameData.h
     World.h
     World.cpp
     Game.h
     Game.cpp
     Random.h
-  )
+    Graphics/Renderer.h
+    Graphics/Renderer.cpp
+    Graphics/Tilemap.h
+    Graphics/Tilemap.cpp
+)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory

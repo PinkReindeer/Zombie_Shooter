@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 static constexpr int WorldRange = 1500;
 
 enum class EntityType : uint8_t

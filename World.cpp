@@ -1,5 +1,3 @@
-#include <cmath>
-#include <cassert>
 #include <algorithm>
 
 #include "World.h"
@@ -190,7 +188,10 @@ void World::Render()
 
         renderer.SetViewOffset(vx, vy);
     }
-    
+
+    // Tilemap
+    renderer.RenderTilemap();
+
     // Player
     if (m_Player.alive)
         renderer.RenderMob((int)m_Player.x, (int)m_Player.y, m_Player.rotation, 1.0f, EntityType::Player, m_Player.shouldDraw, false);
@@ -248,10 +249,10 @@ void World::Render()
     {
         if (m_Player.alive)
         {
-            renderer.RenderText(TextFormat("HP: %.0f", m_Player.hp), 5, 35, 30, 0, 0x0000008F);
-            renderer.RenderText(TextFormat("Soul: %d", m_Player.collectedSoul), 5, 60, 30, 0, 0x0000008F);
-            renderer.RenderText(TextFormat("Wave: %d", currentWave), 5, 85, 30, 0, 0x0000008F);
-            renderer.RenderText(TextFormat("Time: %.0f", waveDuration), 500, 35, 30, 0, 0x0000008F);
+            renderer.RenderText(TextFormat("HP: %.0f", m_Player.hp), 5, 0, 30, 0, 0x0000008F);
+            renderer.RenderText(TextFormat("Soul: %d", m_Player.collectedSoul), 5, 30, 30, 0, 0x0000008F);
+            renderer.RenderText(TextFormat("Wave: %d", currentWave), 5, 60, 30, 0, 0x0000008F);
+            renderer.RenderText(TextFormat("Time: %.0f", waveDuration), 450, 10, 30, 0, 0x0000008F);
             renderer.RenderText(TextFormat("Zombie(s) Left: %d", CountZombies()), 5, 530, 30, 0, 0x0000008F);
         }
     }

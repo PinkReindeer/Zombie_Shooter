@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "Graphics/Renderer.h"
 #include "Game.h"
 
