@@ -308,9 +308,20 @@ void World::UpdatePlayer(float delta)
     if (dx != 0.0f || dy != 0.0f)
     {
         float len = std::sqrt(dx * dx + dy * dy);
-        m_Player.x += (dx / len) * m_Player.speed * delta;
-        m_Player.y += (dy / len) * m_Player.speed * delta;
+        m_Player.x += (dx / len) * (m_Player.speed + 500.0f) * delta;
+        m_Player.y += (dy / len) * (m_Player.speed + 500.0f) * delta;
     }
+
+    Renderer& renderer = Application::GetRenderer();
+    if (m_Player.x >= renderer.GetTileMapRowSize())
+        m_Player.x = renderer.GetTileMapRowSize();
+    if (m_Player.x <= -renderer.GetTileMapRowSize())
+        m_Player.x = -renderer.GetTileMapRowSize();
+
+    if (m_Player.y >= renderer.GetTileMapColSize())
+        m_Player.y = renderer.GetTileMapColSize();
+    if (m_Player.y <= -renderer.GetTileMapColSize())
+        m_Player.y = -renderer.GetTileMapColSize();
 
     // Knockback decay
     if (m_Player.knockVx != 0.0f || m_Player.knockVy != 0.0f)
@@ -374,7 +385,6 @@ void World::UpdatePlayer(float delta)
     }
 
     // Mouse aim
-    Renderer& renderer = Application::GetRenderer();
     Vector2 mouseScreen = GetMousePosition();
     Vector2 mouseWorld  = renderer.ScreenToWorld(mouseScreen);
 

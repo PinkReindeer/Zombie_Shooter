@@ -32,7 +32,7 @@ void Renderer::SetViewOffset(int x, int y)
 
 void Renderer::RenderTilemap() const
 {
-    m_Tilemap.Render(m_ViewOffsetX, m_ViewOffsetY, 2.5f);
+    m_Tilemap.Render(m_ViewOffsetX, m_ViewOffsetY);
 }
 
 void Renderer::RenderMob(int xp, int yp, float rotation, float multiplySize, EntityType type, bool shouldDraw, bool isMutation)

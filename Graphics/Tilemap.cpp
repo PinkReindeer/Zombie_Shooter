@@ -69,14 +69,14 @@ Rectangle Tilemap::TileSourceRect(int tileIndex) const
     return { (float)(col * TILE_SIZE), (float)(row * TILE_SIZE), (float)TILE_SIZE, (float)TILE_SIZE };
 }
 
-void Tilemap::Render(int viewOffsetX, int viewOffsetY, float scale) const
+void Tilemap::Render(int viewOffsetX, int viewOffsetY) const
 {
     if (m_Tileset.id == 0 || m_Rows == 0 || m_Cols == 0) return;
 
     const int screenW  = GetScreenWidth();
     const int screenH  = GetScreenHeight();
 
-    float scaledTileSize = TILE_SIZE * scale;
+    float scaledTileSize = TILE_SIZE * TILE_SCALE;
 
     float mapOffsetX = (m_Cols * scaledTileSize) / 2.0f;
     float mapOffsetY = (m_Rows * scaledTileSize) / 2.0f;
@@ -97,8 +97,6 @@ void Tilemap::Render(int viewOffsetX, int viewOffsetY, float scale) const
         {
             int tileId = m_Tiles[row * m_Cols + col];
             if (tileId <= 0) continue;
-
-            //tileId &= 0x1FFFFFFF;
 
             int screenX = col * scaledTileSize - mapOffsetX - viewOffsetX;
             int screenY = row * scaledTileSize - mapOffsetX - viewOffsetY;

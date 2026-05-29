@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameData.h"
+#include "Graphics/Tilemap.h"
 
 class World
 {
@@ -55,6 +56,8 @@ private:
 
     // Data pools
     Player m_Player;
+    Tilemap m_Tilemap;
+
     std::vector<Zombie> m_Zombies;
     std::vector<Bullet> m_Bullets;
     std::vector<Particle> m_Particles;

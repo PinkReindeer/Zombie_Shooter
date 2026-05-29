@@ -6,12 +6,13 @@ class Tilemap
 {
 public:
 	static constexpr int TILE_SIZE = 16;
+	static constexpr float TILE_SCALE = 2.5f;
 
 	void Load(const char* csvPath, const char* tilesetPath);
 
 	void Unload();
 
-	void Render(int viewOffsetX, int viewOffsetY, float scale = 1.0f) const;
+	void Render(int viewOffsetX, int viewOffsetY) const;
 
 	int GetMapCols() const { return m_Cols; }
 	int GetMapRows() const { return m_Rows; }
