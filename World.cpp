@@ -127,6 +127,13 @@ void World::CreateBloodExplosion(float x, float y, int count)
 
 void World::Update(float delta)
 {
+    // Restart on lose screen
+    if (!Play && GameOverMessage && IsKeyPressed(KEY_R))
+    {
+        Reset();
+        return;
+    }
+
     if (Play)
     {
         UpdateCollision (delta);
@@ -162,7 +169,11 @@ void World::Update(float delta)
             }
         }
 
-        if (waveDuration < 0.0f) waveDuration = 60.0f;
+        if (waveDuration < 0.0f && CountZombies() > 0)
+        {
+            Play = false;
+            GameOverMessage = "TIME'S UP";
+        }
     }
 
     // Decay screen shake
@@ -185,6 +196,22 @@ void World::Render()
             vx += (int)(Random::FloatSigned() * ShakeIntensity * power);
             vy += (int)(Random::FloatSigned() * ShakeIntensity * power);
         }
+
+        // Clamp camera so the viewport never shows outside the map
+        int mapHalfW = renderer.GetTileMapRowSize();
+        int mapHalfH = renderer.GetTileMapColSize();
+        int screenW  = GetScreenWidth();
+        int screenH  = GetScreenHeight();
+
+        int minVx = -mapHalfW;
+        int maxVx =  mapHalfW - screenW;
+        int minVy = -mapHalfH;
+        int maxVy =  mapHalfH - screenH;
+
+        if (vx < minVx) vx = minVx;
+        if (vx > maxVx) vx = maxVx;
+        if (vy < minVy) vy = minVy;
+        if (vy > maxVy) vy = maxVy;
 
         renderer.SetViewOffset(vx, vy);
     }
@@ -256,6 +283,75 @@ void World::Render()
             renderer.RenderText(TextFormat("Zombie(s) Left: %d", CountZombies()), 5, 530, 30, 0, 0x0000008F);
         }
     }
+
+    // Game Over screen
+    if (!Play && GameOverMessage)
+    {
+        int screenW = GetScreenWidth();
+        int screenH = GetScreenHeight();
+
+        // Dark overlay
+        DrawRectangle(0, 0, screenW, screenH, { 0, 0, 0, 180 });
+
+        // "YOU LOSE" title
+        int titleSize = 60;
+        int titleWidth = MeasureText("YOU LOSE", titleSize);
+        DrawText("YOU LOSE", (screenW - titleWidth) / 2, screenH / 2 - 80, titleSize, RED);
+
+        // Reason ("YOU DIED" or "TIME'S UP")
+        int reasonSize = 36;
+        int reasonWidth = MeasureText(GameOverMessage, reasonSize);
+        DrawText(GameOverMessage, (screenW - reasonWidth) / 2, screenH / 2, reasonSize, { 255, 200, 200, 255 });
+
+        // Stats
+        const char* waveText = TextFormat("Wave Reached: %d", currentWave);
+        const char* soulText = TextFormat("Souls Collected: %d", m_Player.collectedSoul);
+        int statsSize = 24;
+
+        int waveWidth = MeasureText(waveText, statsSize);
+        DrawText(waveText, (screenW - waveWidth) / 2, screenH / 2 + 60, statsSize, LIGHTGRAY);
+
+        int soulWidth = MeasureText(soulText, statsSize);
+        DrawText(soulText, (screenW - soulWidth) / 2, screenH / 2 + 90, statsSize, LIGHTGRAY);
+
+        // Restart hint
+        const char* restartText = "Press R to Restart";
+        int restartSize = 20;
+        int restartWidth = MeasureText(restartText, restartSize);
+        DrawText(restartText, (screenW - restartWidth) / 2, screenH / 2 + 140, restartSize, { 200, 200, 200, 200 });
+    }
+}
+
+void World::Reset()
+{
+    // Clear all entities
+    m_Zombies.clear();
+    m_Bullets.clear();
+    m_Particles.clear();
+    m_Orbs.clear();
+
+    // Reset player
+    CreatePlayer(0.0f, 0.0f);
+
+    // Reset game state
+    Play = true;
+    GameOverMessage = nullptr;
+
+    // Reset wave state
+    currentWave = 0;
+    waveDuration = 60.0f;
+    waveDelay = 3.0f;
+    isWaveClear = true;
+    m_lastFifthWave = -1;
+
+    // Reset difficulty
+    SpawnRadius = 500.0f;
+    MaxZombies = 50;
+    HealthMultiplier = 1.0f;
+    SpeedMultiplier = 1.0f;
+
+    // Reset screen shake
+    ShakeTrauma = 0.0f;
 }
 
 void World::UpdateCollision(float delta)
@@ -287,7 +383,11 @@ void World::UpdateCollision(float delta)
 
             ShakeTrauma = 1.0f;
 
-            if (m_Player.hp <= 0.0f) Play = false;
+            if (m_Player.hp <= 0.0f)
+            {
+                Play = false;
+                GameOverMessage = "YOU DIED";
+            }
 
             break;
         }
@@ -313,6 +413,8 @@ void World::UpdatePlayer(float delta)
     }
 
     Renderer& renderer = Application::GetRenderer();
+        
+    // Check if player inside the map
     if (m_Player.x >= renderer.GetTileMapRowSize())
         m_Player.x = renderer.GetTileMapRowSize();
     if (m_Player.x <= -renderer.GetTileMapRowSize())

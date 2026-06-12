@@ -8,6 +8,7 @@ class World
 public:
     void Update(float delta);
     void Render();
+    void Reset();
 
     // Entity factory methods
     void CreatePlayer(float x, float y);
@@ -21,6 +22,7 @@ public:
     int CountZombies() const;
 
     bool Play = true;
+    const char* GameOverMessage = nullptr;
 
     // Difficulty
     float SpawnRadius = 500.0f;
