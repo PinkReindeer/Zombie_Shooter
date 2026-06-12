@@ -368,8 +368,8 @@ void World::UpdatePlayer(float delta)
     if (dx != 0.0f || dy != 0.0f)
     {
         float len = std::sqrt(dx * dx + dy * dy);
-        m_Player.x += (dx / len) * (m_Player.speed + 500.0f) * delta;
-        m_Player.y += (dy / len) * (m_Player.speed + 500.0f) * delta;
+        m_Player.x += (dx / len) * m_Player.speed * delta;
+        m_Player.y += (dy / len) * m_Player.speed * delta;
     }
 
     Renderer& renderer = Application::GetRenderer();
