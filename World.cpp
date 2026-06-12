@@ -481,7 +481,15 @@ void World::UpdatePlayer(float delta)
         float cdy = m_Player.y - orb.y;
         if (cdx * cdx + cdy * cdy <= collectDist * collectDist)
         {
-            m_Player.collectedSoul += 1;
+            int soulValue = 1;
+            switch (orb.type)
+            {
+            case OrbType::Rare:      soulValue = 3;  break;
+            case OrbType::Epic:      soulValue = 7;  break;
+            case OrbType::Legendary: soulValue = 15; break;
+            default:                 soulValue = 1;  break;
+            }
+            m_Player.collectedSoul += soulValue;
             orb.alive = false;
         }
     }
@@ -567,7 +575,31 @@ void World::UpdateBullets(float delta)
                 if (zombie.hp <= 0.0f)
                 {
                     CreateBloodExplosion(zombie.x, zombie.y, 10);
-                    CreateOrb(zombie.x, zombie.y, OrbType::Common);
+
+                    // Roll random orb type based on zombie kind
+                    Random::Init();
+                    float roll = Random::Float();
+                    OrbType dropType = OrbType::Common;
+
+                    if (zombie.isBoss)
+                    {
+                        // Boss: 30% Epic, 70% Legendary
+                        dropType = (roll < 0.3f) ? OrbType::Epic : OrbType::Legendary;
+                    }
+                    else if (zombie.isMutation)
+                    {
+                        // Mutation: 10% Common, 60% Rare, 30% Epic
+                        if (roll < 0.1f)       dropType = OrbType::Common;
+                        else if (roll < 0.7f)  dropType = OrbType::Rare;
+                        else                   dropType = OrbType::Epic;
+                    }
+                    else
+                    {
+                        // Normal: 80% Common, 20% Rare
+                        dropType = (roll < 0.8f) ? OrbType::Common : OrbType::Rare;
+                    }
+
+                    CreateOrb(zombie.x, zombie.y, dropType);
                     zombie.alive = false;
                 }
                 else
