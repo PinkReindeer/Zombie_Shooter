@@ -2,6 +2,7 @@
 
 #include "World.h"
 #include "GameData.h"
+#include "EntityPools.h"
 #include "Graphics/Renderer.h"
 #include "Application.h"
 #include "Random.h"
@@ -17,6 +18,12 @@ void World::CreatePlayer(float x, float y)
     m_Player.hitboxRadius = 18.0f;
     m_Player.shouldDraw = true;
     m_Player.alive = true;
+
+    // Pre-reserve pool capacity
+    m_Zombies.Reserve();
+    m_Bullets.Reserve();
+    m_Particles.Reserve();
+    m_Orbs.Reserve();
 }
 
 void World::CreateZombie(float x, float y)
@@ -25,54 +32,34 @@ void World::CreateZombie(float x, float y)
     bool isMutation = (Random::Float() < 0.05f); // Have 5 percent to be a mutation zombie
     float mutationMultiplier = isMutation ? 2.0f : 1.0f;
 
-    Zombie zombie;
-    zombie.x = x;
-    zombie.y = y;
-    zombie.hp = 100.0f * mutationMultiplier * HealthMultiplier;
-    zombie.maxHp = zombie.hp;
-    zombie.speed = 50.0f * SpeedMultiplier;
-    zombie.hitboxRadius = 18.0f;
-    zombie.sizeMultiply = 1.0f;
-    zombie.isMutation = isMutation;
-    zombie.isBoss = false;
-    zombie.alive = true;
-
-    m_Zombies.emplace_back(zombie);
+    m_Zombies.Add(
+        x, y, 0.0f, 50.0f * SpeedMultiplier,
+        100.0f * mutationMultiplier * HealthMultiplier,
+        100.0f * mutationMultiplier * HealthMultiplier,
+        18.0f, 1.0f, 0, isMutation ? (uint8_t)1 : (uint8_t)0
+    );
 }
 
 void World::CreateBoss(float x, float y)
 {
-    Zombie zombie;
-    zombie.x = x;
-    zombie.y = y;
-    zombie.hp = 100.0f * 10.0f * HealthMultiplier;
-    zombie.maxHp = zombie.hp;
-    zombie.speed = 40.0f * SpeedMultiplier;
-    zombie.hitboxRadius = 18.0f * 3.0f;
-    zombie.sizeMultiply = 3.0f;
-    zombie.isBoss = true;
-    zombie.isMutation = false;
-    zombie.alive = true;
-
-    m_Zombies.emplace_back(zombie);
+    m_Zombies.Add(
+        x, y, 0.0f, 40.0f * SpeedMultiplier,
+        100.0f * 10.0f * HealthMultiplier, 100.0f * 10.0f * HealthMultiplier,
+        18.0f * 3.0f, 3.0f, 1, 0
+    );
 }
 
 void World::CreateBullet(float x, float y, float dirX, float dirY)
 {
-    Bullet bullet;
-    bullet.x = x;
-    bullet.y = y;
-    bullet.lifeTime = 3.0f;
-    bullet.alive = true;
-
+    float bvx = 0.0f, bvy = 0.0f;
     if (dirX != 0.0f || dirY != 0.0f)
     {
         float len = std::sqrt(dirX * dirX + dirY * dirY);
-        bullet.vx = (dirX / len) * Bullet::Speed;
-        bullet.vy = (dirY / len) * Bullet::Speed;
+        bvx = (dirX / len) * BulletPool::Speed;
+        bvy = (dirY / len) * BulletPool::Speed;
     }
 
-    m_Bullets.emplace_back(bullet);
+    m_Bullets.Add(x, y, bvx, bvy, 3.0f);
 }
 
 void World::CreateParticle(float x, float y, uint32_t color)
@@ -83,38 +70,23 @@ void World::CreateParticle(float x, float y, uint32_t color)
     float vx = std::cosf(angle) * speed;
     float vy = std::sinf(angle) * speed;
 
-    Particle particle;
-    particle.x = x;
-    particle.y = y;
-    particle.vx = vx;
-    particle.vy = vy;
-    particle.lifeTime = 0.5f;
-    particle.maxLifeTime = 0.5f;
-    particle.radius = 4.0f + ((vx * vx + vy * vy) > 0.0f ? 1.5f : 0.0f);
-    particle.color = color;
-    particle.alive = true;
+    float radius = 4.0f + ((vx * vx + vy * vy) > 0.0f ? 1.5f : 0.0f);
 
-    m_Particles.emplace_back(particle);
+    m_Particles.Add(x, y, vx, vy, 0.5f,0.5f, radius, color);
 }
 
 void World::CreateOrb(float x, float y, OrbType type)
 {
-    Orb orb;
-    orb.x = x;
-    orb.y = y;
-    orb.type = type;
-    orb.alive = true;
-    orb.radius = 5.0f;
-
+    uint32_t color = 0xFFFFFFFF;
     switch (type)
     {
-    case OrbType::Rare:      orb.color = 0x2EFF30FF; break;
-    case OrbType::Epic:      orb.color = 0xDD00EFCC; break;
-    case OrbType::Legendary: orb.color = 0xFFBD00CC; break;
-    default:                 orb.color = 0xFFFFFFFF; break;
+    case OrbType::Rare:      color = 0x2EFF30FF; break;
+    case OrbType::Epic:      color = 0xDD00EFCC; break;
+    case OrbType::Legendary: color = 0xFFBD00CC; break;
+    default:                 color = 0xFFFFFFFF; break;
     }
 
-    m_Orbs.emplace_back(orb);
+    m_Orbs.Add(x, y, 5.0f, color, type);
 }
 
 void World::CreateBloodExplosion(float x, float y, int count)
@@ -141,11 +113,6 @@ void World::Update(float delta)
         UpdateZombies (delta);
         UpdateBullets (delta);
         UpdateParticles (delta);
-
-        std::erase_if(m_Zombies, [](const Zombie& zombie) { return !zombie.alive; });
-        std::erase_if(m_Bullets, [](const Bullet& bullet) { return !bullet.alive; });
-        std::erase_if(m_Particles, [](const Particle& particle) { return !particle.alive; });
-        std::erase_if(m_Orbs, [](const Orb& orb) { return !orb.alive; });
 
         waveDuration -= delta;
 
@@ -224,52 +191,47 @@ void World::Render()
         renderer.RenderMob((int)m_Player.x, (int)m_Player.y, m_Player.rotation, 1.0f, EntityType::Player, m_Player.shouldDraw, false);
 
     // Zombies
-    for (const Zombie& zombie : m_Zombies)
+    for (size_t i = 0; i < m_Zombies.count; ++i)
     {
-        if (!zombie.alive) continue;
-
-        renderer.RenderMob((int)zombie.x, (int)zombie.y, zombie.rotation, zombie.sizeMultiply, EntityType::Zombie, true, zombie.isMutation);
+        renderer.RenderMob((int)m_Zombies.x[i], (int)m_Zombies.y[i],
+                           m_Zombies.rotation[i], m_Zombies.sizeMultiply[i],
+                           EntityType::Zombie, true, m_Zombies.isMutation[i]);
 
         int hpWidth = renderer.GetHealthBarWidth();
-        int fill = (int)(hpWidth * (zombie.hp / zombie.maxHp));
-        int barOffset = zombie.isBoss ? 50 : 25;
-        renderer.RenderHealthBar((int)zombie.x - hpWidth / 2, (int)zombie.y + barOffset, fill);
+        int fill = (int)(hpWidth * (m_Zombies.hp[i] / m_Zombies.maxHp[i]));
+        int barOffset = m_Zombies.isBoss[i] ? 50 : 25;
+        renderer.RenderHealthBar((int)m_Zombies.x[i] - hpWidth / 2, (int)m_Zombies.y[i] + barOffset, fill);
     }
 
     // Bullets
-    for (const Bullet& bullet : m_Bullets)
+    for (size_t i = 0; i < m_Bullets.count; ++i)
     {
-        if (bullet.alive)
-            renderer.RenderBullet((int)bullet.x, (int)bullet.y);
+        renderer.RenderBullet((int)m_Bullets.x[i], (int)m_Bullets.y[i]);
     }
 
     // Particles
-    for (const Particle& particle : m_Particles)
+    for (size_t i = 0; i < m_Particles.count; ++i)
     {
-        if (!particle.alive) continue;
-
-        float t = particle.lifeTime / particle.maxLifeTime;
-        float radius = particle.radius * t;
+        float t = m_Particles.lifeTime[i] / m_Particles.maxLifeTime[i];
+        float radius = m_Particles.radius[i] * t;
         if (radius < 0.5f) continue;
 
         unsigned char alpha = (unsigned char)(255.0f * t);
-        Color inner = GetColor(particle.color);
+        Color inner = GetColor(m_Particles.color[i]);
         inner.a = alpha;
         Color outer = { 140, 10, 10, alpha };
 
-        renderer.RenderParticle((int)particle.x, (int)particle.y, radius, inner, outer);
+        renderer.RenderParticle((int)m_Particles.x[i], (int)m_Particles.y[i], radius, inner, outer);
     }
 
-    // Orbs
-    for (const Orb& orb : m_Orbs)
+    // Orbs (SoA)
+    for (size_t i = 0; i < m_Orbs.count; ++i)
     {
-        if (!orb.alive) continue;
-
-        Color inner = GetColor(orb.color);
+        Color inner = GetColor(m_Orbs.color[i]);
         Color outer = inner;
         outer.a = (unsigned char)(255 * 0.2f);
 
-        renderer.RenderSoulOrb((int)orb.x, (int)orb.y, orb.radius, inner, outer);
+        renderer.RenderSoulOrb((int)m_Orbs.x[i], (int)m_Orbs.y[i], m_Orbs.radius[i], inner, outer);
     }
 
     if (Play)
@@ -324,11 +286,11 @@ void World::Render()
 
 void World::Reset()
 {
-    // Clear all entities
-    m_Zombies.clear();
-    m_Bullets.clear();
-    m_Particles.clear();
-    m_Orbs.clear();
+    // Clear all entity pools
+    m_Zombies.Clear();
+    m_Bullets.Clear();
+    m_Particles.Clear();
+    m_Orbs.Clear();
 
     // Reset player
     CreatePlayer(0.0f, 0.0f);
@@ -358,13 +320,11 @@ void World::UpdateCollision(float delta)
 {
     if (!m_Player.alive || m_Player.invulnerable) return;
 
-    for (Zombie& zombie : m_Zombies)
+    for (size_t i = 0; i < m_Zombies.count; ++i)
     {
-        if (!zombie.alive) continue;
-
-        float dx = m_Player.x - zombie.x;
-        float dy = m_Player.y - zombie.y;
-        float rSum = m_Player.hitboxRadius + zombie.hitboxRadius;
+        float dx = m_Player.x - m_Zombies.x[i];
+        float dy = m_Player.y - m_Zombies.y[i];
+        float rSum = m_Player.hitboxRadius + m_Zombies.hitboxRadius[i];
 
         if (dx * dx + dy * dy <= rSum * rSum)
         {
@@ -413,17 +373,6 @@ void World::UpdatePlayer(float delta)
     }
 
     Renderer& renderer = Application::GetRenderer();
-        
-    // Check if player inside the map
-    if (m_Player.x >= renderer.GetTileMapRowSize())
-        m_Player.x = renderer.GetTileMapRowSize();
-    if (m_Player.x <= -renderer.GetTileMapRowSize())
-        m_Player.x = -renderer.GetTileMapRowSize();
-
-    if (m_Player.y >= renderer.GetTileMapColSize())
-        m_Player.y = renderer.GetTileMapColSize();
-    if (m_Player.y <= -renderer.GetTileMapColSize())
-        m_Player.y = -renderer.GetTileMapColSize();
 
     // Knockback decay
     if (m_Player.knockVx != 0.0f || m_Player.knockVy != 0.0f)
@@ -438,6 +387,17 @@ void World::UpdatePlayer(float delta)
         if (std::abs(m_Player.knockVx) < 0.1f) m_Player.knockVx = 0.0f;
         if (std::abs(m_Player.knockVy) < 0.1f) m_Player.knockVy = 0.0f;
     }
+
+    // Clamp player inside the map
+    if (m_Player.x >= renderer.GetTileMapRowSize())
+        m_Player.x = renderer.GetTileMapRowSize();
+    if (m_Player.x <= -renderer.GetTileMapRowSize())
+        m_Player.x = -renderer.GetTileMapRowSize();
+
+    if (m_Player.y >= renderer.GetTileMapColSize())
+        m_Player.y = renderer.GetTileMapColSize();
+    if (m_Player.y <= -renderer.GetTileMapColSize())
+        m_Player.y = -renderer.GetTileMapColSize();
 
     // Invulnerability blink
     if (m_Player.invulnerable)
@@ -454,13 +414,11 @@ void World::UpdatePlayer(float delta)
         }
     }
 
-    // Orb attraction & collection
-    for (Orb& orb : m_Orbs)
+    // Orb attraction & collection 
+    for (size_t i = 0; i < m_Orbs.count; )
     {
-        if (!orb.alive) continue;
-
-        float odx = m_Player.x - orb.x;
-        float ody = m_Player.y - orb.y;
+        float odx = m_Player.x - m_Orbs.x[i];
+        float ody = m_Player.y - m_Orbs.y[i];
         float distSq = odx * odx + ody * ody;
 
         // Attract when inside collect range
@@ -470,19 +428,19 @@ void World::UpdatePlayer(float delta)
             if (dist > 0.0f)
             {
                 float absorbSpeed = 5.0f * dist;
-                orb.x += (odx / dist) * absorbSpeed * delta;
-                orb.y += (ody / dist) * absorbSpeed * delta;
+                m_Orbs.x[i] += (odx / dist) * absorbSpeed * delta;
+                m_Orbs.y[i] += (ody / dist) * absorbSpeed * delta;
             }
         }
 
         // Collect on touch
-        float collectDist = m_Player.hitboxRadius + orb.radius;
-        float cdx = m_Player.x - orb.x;
-        float cdy = m_Player.y - orb.y;
+        float collectDist = m_Player.hitboxRadius + m_Orbs.radius[i];
+        float cdx = m_Player.x - m_Orbs.x[i];
+        float cdy = m_Player.y - m_Orbs.y[i];
         if (cdx * cdx + cdy * cdy <= collectDist * collectDist)
         {
             int soulValue = 1;
-            switch (orb.type)
+            switch (m_Orbs.type[i])
             {
             case OrbType::Rare:      soulValue = 3;  break;
             case OrbType::Epic:      soulValue = 7;  break;
@@ -490,7 +448,11 @@ void World::UpdatePlayer(float delta)
             default:                 soulValue = 1;  break;
             }
             m_Player.collectedSoul += soulValue;
-            orb.alive = false;
+            m_Orbs.Remove(i);
+        }
+        else
+        {
+            ++i;
         }
     }
 
@@ -530,63 +492,65 @@ void World::UpdateZombies(float delta)
 {
     if (!m_Player.alive) return;
 
-    for (Zombie& zombie : m_Zombies)
+    for (size_t i = 0; i < m_Zombies.count; ++i)
     {
-        if (!zombie.alive) continue;
-
-        float dx = m_Player.x - zombie.x;
-        float dy = m_Player.y - zombie.y;
+        float dx = m_Player.x - m_Zombies.x[i];
+        float dy = m_Player.y - m_Zombies.y[i];
 
         if (dx != 0.0f || dy != 0.0f)
         {
             float len = std::sqrt(dx * dx + dy * dy);
-            zombie.x += (dx / len) * zombie.speed * delta;
-            zombie.y += (dy / len) * zombie.speed * delta;
+            m_Zombies.x[i] += (dx / len) * m_Zombies.speed[i] * delta;
+            m_Zombies.y[i] += (dy / len) * m_Zombies.speed[i] * delta;
         }
 
-        zombie.rotation = atan2f(m_Player.y - zombie.y, m_Player.x - zombie.x) * RAD2DEG;
+        m_Zombies.rotation[i] = atan2f(m_Player.y - m_Zombies.y[i],
+                                       m_Player.x - m_Zombies.x[i]) * RAD2DEG;
     }
 }
 
 void World::UpdateBullets(float delta)
 {
-    for (Bullet& bullet : m_Bullets)
+    for (size_t i = 0; i < m_Bullets.count; )
     {
-        if (!bullet.alive) continue;
+        m_Bullets.x[i] += m_Bullets.vx[i] * delta;
+        m_Bullets.y[i] += m_Bullets.vy[i] * delta;
 
-        bullet.x += bullet.vx * delta;
-        bullet.y += bullet.vy * delta;
-
-        bullet.lifeTime -= delta;
-        if (bullet.lifeTime <= 0.0f) { bullet.alive = false; continue; }
+        m_Bullets.lifeTime[i] -= delta;
+        if (m_Bullets.lifeTime[i] <= 0.0f)
+        {
+            m_Bullets.Remove(i);
+            continue;
+        }
 
         // Bullet vs zombie
-        Vector2 bulletCenter = { bullet.x, bullet.y };
-        for (Zombie& zombie : m_Zombies)
-        {
-            if (!zombie.alive) continue;
+        Vector2 bulletCenter = { m_Bullets.x[i], m_Bullets.y[i] };
+        bool bulletHit = false;
 
-            Vector2 zombieCenter = { zombie.x, zombie.y };
-            if (CheckCollisionCircles(bulletCenter, Bullet::HitboxRadius, zombieCenter, zombie.hitboxRadius))
+        for (size_t z = 0; z < m_Zombies.count; )
+        {
+            Vector2 zombieCenter = { m_Zombies.x[z], m_Zombies.y[z] };
+            if (CheckCollisionCircles(bulletCenter, BulletPool::HitboxRadius,
+                                      zombieCenter, m_Zombies.hitboxRadius[z]))
             {
-                zombie.hp -= 100.0f;
+                m_Zombies.hp[z] -= 100.0f;
                 ShakeTrauma = 0.6f;
 
-                if (zombie.hp <= 0.0f)
+                if (m_Zombies.hp[z] <= 0.0f)
                 {
-                    CreateBloodExplosion(zombie.x, zombie.y, 10);
+                    CreateBloodExplosion(m_Zombies.x[z], m_Zombies.y[z], 10);
 
                     // Roll random orb type based on zombie kind
                     Random::Init();
                     float roll = Random::Float();
                     OrbType dropType = OrbType::Common;
 
-                    if (zombie.isBoss)
+                    if (m_Zombies.isBoss[z])
                     {
                         // Boss: 30% Epic, 70% Legendary
                         dropType = (roll < 0.3f) ? OrbType::Epic : OrbType::Legendary;
                     }
-                    else if (zombie.isMutation)
+                    else if (m_Zombies.isMutation[z])
                     {
                         // Mutation: 10% Common, 60% Rare, 30% Epic
                         if (roll < 0.1f)       dropType = OrbType::Common;
@@ -599,30 +563,52 @@ void World::UpdateBullets(float delta)
                         dropType = (roll < 0.8f) ? OrbType::Common : OrbType::Rare;
                     }
 
-                    CreateOrb(zombie.x, zombie.y, dropType);
-                    zombie.alive = false;
+                    CreateOrb(m_Zombies.x[z], m_Zombies.y[z], dropType);
+                    m_Zombies.Remove(z);
                 }
                 else
-                    CreateBloodExplosion(zombie.x, zombie.y, 2);
+                {
+                    CreateBloodExplosion(m_Zombies.x[z], m_Zombies.y[z], 2);
+                    ++z;
+                }
 
-                bullet.alive = false;
+                bulletHit = true;
                 break;
             }
+            else
+            {
+                ++z;
+            }
+        }
+
+        if (bulletHit)
+        {
+            m_Bullets.Remove(i);
+        }
+        else
+        {
+            ++i;
         }
     }
 }
 
 void World::UpdateParticles(float delta)
 {
-    for (Particle& particle : m_Particles)
+    for (size_t i = 0; i < m_Particles.count; )
     {
-        if (!particle.alive) continue;
+        m_Particles.x[i] += m_Particles.vx[i] * delta;
+        m_Particles.y[i] += m_Particles.vy[i] * delta;
 
-        particle.x += particle.vx * delta;
-        particle.y += particle.vy * delta;
-
-        particle.lifeTime -= delta;
-        if (particle.lifeTime <= 0.0f) particle.alive = false;
+        m_Particles.lifeTime[i] -= delta;
+        if (m_Particles.lifeTime[i] <= 0.0f)
+        {
+            m_Particles.Remove(i);
+            // Don't increment — re-check swapped-in element
+        }
+        else
+        {
+            ++i;
+        }
     }
 }
 
@@ -667,7 +653,7 @@ void World::SpawnBoss()
 
 int World::CountZombies() const
 {
-    return (int)m_Zombies.size();
+    return (int)m_Zombies.count;
 }
 
 Vector2 World::GenerateRandomSpawnPosition() const

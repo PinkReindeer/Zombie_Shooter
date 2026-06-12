@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameData.h"
+#include "EntityPools.h"
 #include "Graphics/Tilemap.h"
 
 class World
@@ -56,14 +57,14 @@ private:
     void UpdateDifficulty();
     Vector2 GenerateRandomSpawnPosition() const;
 
-    // Data pools
+    // Data pools (SoA)
     Player m_Player;
     Tilemap m_Tilemap;
 
-    std::vector<Zombie> m_Zombies;
-    std::vector<Bullet> m_Bullets;
-    std::vector<Particle> m_Particles;
-    std::vector<Orb> m_Orbs;
+    ZombiePool   m_Zombies;
+    BulletPool   m_Bullets;
+    ParticlePool m_Particles;
+    OrbPool      m_Orbs;
 
     int m_lastFifthWave = -1;
 };

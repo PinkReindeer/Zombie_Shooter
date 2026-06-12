@@ -7,7 +7,10 @@ class Random
 public:
 	static void Init()
 	{
+		static bool seeded = false;
+		if (seeded) return;
 		s_RandomEngine.seed(std::random_device()());
+		seeded = true;
 	}
 
     static uint32_t UInt()
